@@ -1,24 +1,88 @@
-import React, { useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
-import { assets, jobsApplied } from "../assets/assets";
-import moment from "moment";
 import Footer from "../components/Footer";
+import { AppContext } from "../context/AppContext";
+import axios from "axios";
+import { toast } from "react-toastify";
+import { useAuth, useUser } from "@clerk/clerk-react"; // ✅ Proper Clerk import
+import moment from "moment";
+import { assets } from "../assets/assets";
 
 const Applications = () => {
+  const { user, isLoaded } = useUser();
+  const { getToken } = useAuth();
+
   const [isEdit, setIsEdit] = useState(false);
   const [resume, setResume] = useState(null);
+
+  const {
+    backendUrl,
+    userData,
+    userApplications,
+    fetchUserData,
+    fetchUserApplications,
+  } = useContext(AppContext);
+
+  // ✅ Upload or update resume
+  const updateResume = async () => {
+    if (!resume) {
+      toast.error("Please select a resume file first");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("resume", resume);
+
+      const token = await getToken();
+
+      const { data } = await axios.post(
+        `${backendUrl}/api/users/update-resume`,
+        formData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (data.success) {
+        toast.success(data.message);
+        await fetchUserData();
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+
+    setIsEdit(false);
+    setResume(null);
+  };
+
+  // ✅ Fetch user job applications when logged in
+  useEffect(() => {
+    if (user && isLoaded) {
+      fetchUserApplications();
+    }
+  }, [user, isLoaded]);
+
+  // ✅ Handle loading states safely
+  if (!isLoaded)
+    return <p className="text-center mt-10">Loading user data...</p>;
 
   return (
     <>
       <Navbar />
+
       <div className="container px-4 min-h-[65vh] 2xl:px-20 mx-auto my-10">
         <h2 className="text-xl font-semibold">Your Resume</h2>
+
         <div className="flex gap-2 mb-6 mt-3">
-          {isEdit ? (
+          {isEdit || (userData && userData.resume === "") ? (
             <>
-              <label className="flex items-center" htmlFor="resumeUpload">
+              <label
+                className="flex items-center cursor-pointer"
+                htmlFor="resumeUpload"
+              >
                 <p className="bg-blue-100 text-blue-600 px-4 py-2 rounded-lg mr-2">
-                  Select Resume
+                  {resume ? resume.name : "Select resume"}
                 </p>
                 <input
                   id="resumeUpload"
@@ -27,10 +91,11 @@ const Applications = () => {
                   type="file"
                   hidden
                 />
-                <img src={assets.profile_upload_icon} />
+                <img src={assets.profile_upload_icon} alt="upload" />
               </label>
+
               <button
-                onClick={(e) => setIsEdit(false)}
+                onClick={updateResume}
                 className="bg-green-100 border border-green-400 rounded-lg px-4 py-2"
               >
                 Save
@@ -38,12 +103,19 @@ const Applications = () => {
             </>
           ) : (
             <div className="flex gap-2">
-              <a
-                className="bg-blue-100 text-blue-600 px-4 py-2 rounded-lg"
-                href="#"
-              >
-                Resume
-              </a>
+              {userData && userData.resume ? (
+                <a
+                  target="_blank"
+                  rel="noreferrer"
+                  className="bg-blue-100 text-blue-600 px-4 py-2 rounded-lg"
+                  href={userData.resume}
+                >
+                  View Resume
+                </a>
+              ) : (
+                <p className="text-gray-500">No resume uploaded yet</p>
+              )}
+
               <button
                 onClick={() => setIsEdit(true)}
                 className="text-gray-500 border border-gray-300 rounded-lg px-4 py-2"
@@ -71,24 +143,32 @@ const Applications = () => {
           </thead>
 
           <tbody>
-            {jobsApplied.map((job, index) =>
-              true ? (
+            {userApplications && userApplications.length > 0 ? (
+              userApplications.map((job, index) => (
                 <tr key={index}>
                   <td className="py-3 px-4 flex items-center gap-2 border-b">
-                    <img className="w-8 h-8" src={job.logo} />
-                    {job.company}
+                    <img
+                      className="w-8 h-8"
+                      src={job.companyId?.image}
+                      alt="company"
+                    />
+                    {job.companyId?.name || "Unknown Company"}
                   </td>
-                  <td className="py-2 px-4  border-b">{job.title}</td>
-                  <td className="py-3 px-4 gap-2 border-b">{job.location}</td>
-                  <td className="py-3 px-4 gap-2 border-b">
+                  <td className="py-2 px-4 border-b">
+                    {job.jobId?.title || "N/A"}
+                  </td>
+                  <td className="py-3 px-4 border-b max-sm:hidden">
+                    {job.jobId?.location || "N/A"}
+                  </td>
+                  <td className="py-3 px-4 border-b max-sm:hidden">
                     {moment(job.date).format("ll")}
                   </td>
-                  <td className="py-3 px-4 gap-2 border-b">
+                  <td className="py-3 px-4 border-b">
                     <span
                       className={`${
-                        job.status === "Accepted"
+                        job.status === "accepted"
                           ? "bg-green-100"
-                          : job.status === "Rejected"
+                          : job.status === "rejected"
                           ? "bg-red-100"
                           : "bg-blue-100"
                       } px-4 py-1.5 rounded`}
@@ -97,11 +177,18 @@ const Applications = () => {
                     </span>
                   </td>
                 </tr>
-              ) : null
+              ))
+            ) : (
+              <tr>
+                <td className="py-4 text-center text-gray-500" colSpan="5">
+                  No job applications found
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
       </div>
+
       <Footer />
     </>
   );

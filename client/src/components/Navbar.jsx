@@ -14,7 +14,7 @@ const Navbar = () => {
     <div className="shadow py-4">
       <div className="container px-4 2xl:px-20 mx-auto flex justify-between">
         <img
-          onClick={() => Navigate("/")}
+          onClick={() => navigate("/")}
           className="cursor-pointer"
           src={assets.logo}
           alt="logo"
@@ -24,7 +24,7 @@ const Navbar = () => {
             <Link to={"/applications"}>Applied Jobs</Link>
             <p>|</p>
             <p className="max-sm:hidden">
-              Hi, {user.firstname + " " + user.lastName}
+              Hi, {user.firstName + " " + user.lastName}
             </p>
             <UserButton />
           </div>

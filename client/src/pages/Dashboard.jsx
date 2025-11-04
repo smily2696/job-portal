@@ -1,12 +1,33 @@
-import React from "react";
+import React, { useContext, useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
+import { AppContext } from "../context/AppContext";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+
+  // ✅ Always call useContext before using its values
+  const { companyData, setCompanyData, setCompanyToken } =
+    useContext(AppContext);
+
+  // Function to logout for company
+  const logout = () => {
+    setCompanyToken(null);
+    localStorage.removeItem("companyToken");
+    setCompanyData(null);
+    navigate("/");
+  };
+
+  // Redirect to manage-jobs if companyData exists
+  useEffect(() => {
+    if (companyData) {
+      navigate("/dashboard/manage-jobs");
+    }
+  }, [companyData]);
+
   return (
-    <div className="min-h-screen ">
-      {/* navbar for recruiter panel */}
+    <div className="min-h-screen">
+      {/* Navbar for recruiter panel */}
       <div className="shadow py-4">
         <div className="px-5 flex justify-between items-center">
           <img
@@ -14,25 +35,33 @@ const Dashboard = () => {
             className="max-sm:w-32 cursor-pointer"
             src={assets.logo}
           />
-          <div className="flex items-center gap-3">
-            <p className="max-sm:hidden">Welcome,smily</p>
-            <div className="relative group">
-              <img
-                className="w-8 border rounded-full"
-                src={assets.company_icon}
-              />
-              <div className="absolute hidden group-hover:block top-0 right-0 text-black rounded pt-12">
-                <ul className="list-none m-0 p-2 bg-white rounded-md border text-sm">
-                  <li className="py-1 px-2 cursor-pointer pr-10">Logout</li>
-                </ul>
+
+          {companyData && (
+            <div className="flex items-center gap-3">
+              <p className="max-sm:hidden">Welcome, {companyData.name}</p>
+              <div className="relative group">
+                <img
+                  className="w-8 border rounded-full"
+                  src={companyData.image}
+                />
+                <div className="absolute hidden group-hover:block top-0 right-0 text-black rounded pt-12">
+                  <ul className="list-none m-0 p-2 bg-white rounded-md border text-sm">
+                    <li
+                      onClick={logout}
+                      className="py-1 px-2 cursor-pointer pr-10"
+                    >
+                      Logout
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
       <div className="flex items-start">
-        {/* left sidebar with options three */}
+        {/* Left sidebar with options */}
         <div className="inline-block min-h-screen border-r-2">
           <ul className="flex flex-col items-start pt-5 text-gray-800">
             <NavLink
@@ -68,12 +97,12 @@ const Dashboard = () => {
               to={"/dashboard/view-applications"}
             >
               <img className="min-w-4" src={assets.person_tick_icon} />
-              <p className="max-sm:hidden">View Applications </p>
+              <p className="max-sm:hidden">View Applications</p>
             </NavLink>
           </ul>
         </div>
 
-        <div>
+        <div className="flex-1 h-full p-2 sm:p-5">
           <Outlet />
         </div>
       </div>
